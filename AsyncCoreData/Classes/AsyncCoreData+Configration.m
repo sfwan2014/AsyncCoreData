@@ -196,12 +196,23 @@ static NSMutableDictionary *sharedRunLoopMap;
     return ctx;
 }
 
+//+(NSManagedObjectContext *)newContext {
+//
+//    NSManagedObjectContext *context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+//    [context setPersistentStoreCoordinator:[self  persistentStoreCoordinator]];
+//    return context;
+//
+//}
+// modify by 2020.8.12
 +(NSManagedObjectContext *)newContext {
+    NSManagedObjectContext *context = nil;
+    NSPersistentStoreCoordinator *persistentStore = [self persistentStoreCoordinator];
+    if ([persistentStore.persistentStores count] > 0) {
+        context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+        [context setPersistentStoreCoordinator:persistentStore];
+    }
     
-    NSManagedObjectContext *context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-    [context setPersistentStoreCoordinator:[self  persistentStoreCoordinator]];
     return context;
-
 }
 
 #pragma mark- icloud

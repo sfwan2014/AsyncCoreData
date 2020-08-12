@@ -220,6 +220,10 @@ static NSRecursiveLock *sWriteLock;
              saveModels:(nonnull NSArray<id<UniqueValueProtocol>> *)datas
             inContext:(NSManagedObjectContext *)context
 {
+    // modify by 2020.8.12
+    if (context == nil) {
+        return [NSError errorWithDomain:@"NSManagedObjectContext object is nil!" code:-8000 userInfo:@{@"entity:":entityName}];
+    }
     NSArray *dCopy = [NSArray arrayWithArray:datas];
     NSMutableArray *modelArray_, *dbArray_;
     NSError *retError;
