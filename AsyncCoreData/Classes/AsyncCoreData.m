@@ -9,7 +9,7 @@
 #import "AsyncCoreData.h"
 #import <objc/runtime.h>
 
-
+extern NSMutableSet *disabledCacheEntities;
 
 @implementation NSObject (AsyncCoreData)
 
@@ -79,7 +79,7 @@ static NSRecursiveLock *sWriteLock;
 //注意dbObj参数必须是已经保存到数据库中的数据 即dbObj的objectID.isTemporaryID = NO
 +(void)cacheModel:(NSObject *)obj forEntity:(NSString *)entityName
 {
-    if(!obj)
+    if(!obj || [disabledCacheEntities containsObject:entityName])
         return;
     
     NSString *rootKey = entityName;
@@ -220,43 +220,42 @@ static NSRecursiveLock *sWriteLock;
              saveModels:(nonnull NSArray<id<UniqueValueProtocol>> *)datas
             inContext:(NSManagedObjectContext *)context
 {
-    // modify by 2020.8.12
-    if (context == nil) {
-        return [NSError errorWithDomain:@"NSManagedObjectContext object is nil!" code:-8000 userInfo:@{@"entity:":entityName}];
-    }
     NSArray *dCopy = [NSArray arrayWithArray:datas];
     NSMutableArray *modelArray_, *dbArray_;
     NSError *retError;
     
-    //为了兼容老版本，本来直接在xcode中设置entity的constraints就可以了
+    
     BOOL usePredicateToFiltUniqueness = YES;
     NSEntityDescription *entity = [NSEntityDescription entityForName:entityName inManagedObjectContext:context];
-    if(entity.uniquenessConstraints.count > 0) {
-        entity.uniquenessConstraints = @[@[@"uniqueID"]];
-    }
     
-    for(NSArray *a in entity.uniquenessConstraints) {
-        for(id key in a) {
-            if([key isKindOfClass:[NSString class]]) {
-                if([key isEqualToString:@"uniqueID"]) {
-                    usePredicateToFiltUniqueness = NO;
-                    break;
-                }
-            }
-            else if([key isKindOfClass:[NSAttributeDescription class]]) {
-                NSAttributeDescription *k = (NSAttributeDescription *)key;
-                if([k.name isEqualToString:@"uniqueID"]) {
-                    usePredicateToFiltUniqueness = NO;
-                    break;
-                }
-            }
-        }
-        
-        if( !usePredicateToFiltUniqueness)
-            break;
-    }
-    if(!usePredicateToFiltUniqueness)
-        context.mergePolicy = [[NSMergePolicy alloc] initWithMergeType:NSMergeByPropertyObjectTrumpMergePolicyType];
+//2020.09.29 commentted,
+//为了兼容老版本，本来直接在xcode中设置entity的constraints就可以了
+//    if(entity.uniquenessConstraints.count > 0) {
+//        entity.uniquenessConstraints = @[@[@"uniqueID"]];
+//    }
+//
+//    for(NSArray *a in entity.uniquenessConstraints) {
+//        for(id key in a) {
+//            if([key isKindOfClass:[NSString class]]) {
+//                if([key isEqualToString:@"uniqueID"]) {
+//                    usePredicateToFiltUniqueness = NO;
+//                    break;
+//                }
+//            }
+//            else if([key isKindOfClass:[NSAttributeDescription class]]) {
+//                NSAttributeDescription *k = (NSAttributeDescription *)key;
+//                if([k.name isEqualToString:@"uniqueID"]) {
+//                    usePredicateToFiltUniqueness = NO;
+//                    break;
+//                }
+//            }
+//        }
+//
+//        if( !usePredicateToFiltUniqueness)
+//            break;
+//    }
+//    if(!usePredicateToFiltUniqueness)
+//        context.mergePolicy = [[NSMergePolicy alloc] initWithMergeType:NSMergeByPropertyObjectTrumpMergePolicyType];
     
     _add_write_lock();
         
@@ -292,16 +291,16 @@ static NSRecursiveLock *sWriteLock;
         }
     }
     
-    [context save:&retError];
+    BOOL r = [context save:&retError];
     
-    if(modelArray_.count > 0) {
+    if(r && modelArray_.count > 0) {
         NSInteger i = 0;
         for(;i<modelArray_.count;i++) {
             
             NSManagedObject *DBm1 = [dbArray_ objectAtIndex:i];
             NSObject *m1 = [modelArray_ objectAtIndex:i];
             m1.storeID = DBm1.objectID;
-            //对新插入的元素进行cacke
+            //对新插入的元素进行cache
             [self cacheModel:m1 forEntity:entityName];
         }
     }

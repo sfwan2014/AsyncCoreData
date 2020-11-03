@@ -20,6 +20,9 @@ static NSMutableDictionary *iCloudEnabledClassMap;
 static NSMutableDictionary *sharedMainContextMap;
 static NSMutableDictionary *sharedRunLoopMap;
 
+NSMutableSet *disabledCacheEntities;
+
+
 @implementation AsyncCoreData (Configration)
 
 +(void)setPersistantStore:(nullable NSURL *)persistantFileUrl withModel:(nonnull NSString *)modelName completion:(void(^)(void))mainThreadBlock {
@@ -196,23 +199,26 @@ static NSMutableDictionary *sharedRunLoopMap;
     return ctx;
 }
 
-//+(NSManagedObjectContext *)newContext {
-//
-//    NSManagedObjectContext *context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-//    [context setPersistentStoreCoordinator:[self  persistentStoreCoordinator]];
-//    return context;
-//
-//}
-// modify by 2020.8.12
 +(NSManagedObjectContext *)newContext {
-    NSManagedObjectContext *context = nil;
-    NSPersistentStoreCoordinator *persistentStore = [self persistentStoreCoordinator];
-    if ([persistentStore.persistentStores count] > 0) {
-        context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
-        [context setPersistentStoreCoordinator:persistentStore];
-    }
     
+    NSManagedObjectContext *context = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSPrivateQueueConcurrencyType];
+    [context setPersistentStoreCoordinator:[self  persistentStoreCoordinator]];
     return context;
+
+}
+
++(void)addDisableModelCacheForEnity:(nonnull NSString *)entityName {
+    if(!disabledCacheEntities)
+        disabledCacheEntities = [NSMutableSet setWithCapacity:8];
+    [disabledCacheEntities addObject:entityName];
+    
+    NSCache *subMap = [sDataBaseCacheMap objectForKey:entityName];
+    [subMap removeAllObjects];
+    [sDataBaseCacheMap removeObjectForKey:entityName];
+}
+
++(nullable NSSet *)disabledModelCahceEntities {
+    return [disabledCacheEntities copy];
 }
 
 #pragma mark- icloud
@@ -236,11 +242,15 @@ static NSMutableDictionary *sharedRunLoopMap;
 }
 
 +(void)storesWillChange:(NSNotification *)notification {
+#if DEBUG
     NSLog(@"%s:%@",__PRETTY_FUNCTION__,notification);
+#endif
 }
 
 +(void)storesDidChange:(NSNotification *)notification {
+#if DEBUG
     NSLog(@"%s:%@",__PRETTY_FUNCTION__,notification);
+#endif
     NSManagedObjectContext *context = [self getContext];
     
     [context performBlockAndWait:^{
@@ -260,13 +270,17 @@ static NSMutableDictionary *sharedRunLoopMap;
 }
 
 +(void)persistentStoreDidImportUbiquitousContentChanges:(NSNotification *)changeNotification {
+#if DEBUG
     NSLog(@"%s:%@",__PRETTY_FUNCTION__,changeNotification);
+#endif
     NSManagedObjectContext *context = [self getContext];
     
     [context performBlock:^{
         [context mergeChangesFromContextDidSaveNotification:changeNotification];
     }];
 }
+
+
 
 @end
 

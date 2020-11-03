@@ -150,7 +150,7 @@ modelsWithPredicateAsync:(nullable NSPredicate *)predicate
 
 
 #pragma mark- statitic/massive
-
++(NSExpressionDescription *)expressionDescriptionOfFuction:(NSString *)func forKeyPath:(NSString *)keyPath;
 //function could be @"max:" @"min:" @"count"() @"sum:"
 +(NSNumber *)queryEntity:(NSString *)entityName
         valueWithFuction:(NSString *)func
@@ -209,8 +209,6 @@ modelsWithPredicateAsync:(nullable NSPredicate *)predicate
 
 //将数据库同步到磁盘 for subclass
 +(nullable NSError *)synchronizeinContext:(nonnull NSManagedObjectContext *)context;
-
-+(NSExpressionDescription *)expressionDescriptionOfFuction:(NSString *)func forKeyPath:(NSString *)keyPath;
 
 #pragma mark- 清理缓存
 //ios会在收到内存警告到时候自动清理， osx需要程序员自己在适当的时机调用该方法
